@@ -193,14 +193,13 @@ filters using `Manufacturer` name. For example:
     class ProductFilter(django_filters.FilterSet):
         class Meta:
             model = Product
-            fields = ['category', 'in_stock', 'manufacturer__name`]
+            fields = ['category', 'in_stock', 'manufacturer__name']
 
 This enables us to make queries like:
 
     http://example.com/api/products?manufacturer__name=foo
 
-This is nice, but it shows underlying model structure in REST API, which may
-be undesired, but you can use:
+This is nice, but it exposes the Django's double underscore convention as part of the API.  If you instead want to explicitly name the filter argument you can instead explicitly include it on the `FilterSet` class:
 
     import django_filters
     from myapp.models import Product
@@ -208,12 +207,11 @@ be undesired, but you can use:
     from rest_framework import generics
 
     class ProductFilter(django_filters.FilterSet):
-
         manufacturer = django_filters.CharFilter(name="manufacturer__name")
 
         class Meta:
             model = Product
-            fields = ['category', 'in_stock', 'manufacturer`]
+            fields = ['category', 'in_stock', 'manufacturer']
 
 And now you can execute:
 
