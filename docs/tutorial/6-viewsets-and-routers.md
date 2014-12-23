@@ -44,14 +44,16 @@ Next we're going to replace the `SnippetList`, `SnippetDetail` and `SnippetHighl
             snippet = self.get_object()
             return Response(snippet.highlighted)
 
-        def pre_save(self, obj):
-            obj.owner = self.request.user
+        def perform_create(self, serializer):
+                serializer.save(owner=self.request.user)
 
 This time we've used the `ModelViewSet` class in order to get the complete set of default read and write operations.
 
 Notice that we've also used the `@detail_route` decorator to create a custom action, named `highlight`.  This decorator can be used to add any custom endpoints that don't fit into the standard `create`/`update`/`delete` style.
 
 Custom actions which use the `@detail_route` decorator will respond to `GET` requests.  We can use the `methods` argument if we wanted an action that responded to `POST` requests.
+
+The URLs for custom actions by default depend on the method name itself. If you want to change the way url should be constructed, you can include url_path as a decorator keyword argument.
 
 ## Binding ViewSets to URLs explicitly
 
@@ -60,7 +62,7 @@ To see what's going on under the hood let's first explicitly create a set of vie
 
 In the `urls.py` file we bind our `ViewSet` classes into a set of concrete views.
 
-    from snippets.views import SnippetViewSet, UserViewSet
+    from snippets.views import SnippetViewSet, UserViewSet, api_root
     from rest_framework import renderers
 
     snippet_list = SnippetViewSet.as_view({
@@ -87,14 +89,14 @@ Notice how we're creating multiple views from each `ViewSet` class, by binding t
 
 Now that we've bound our resources into concrete views, we can register the views with the URL conf as usual.
 
-    urlpatterns = format_suffix_patterns(patterns('snippets.views',
-        url(r'^$', 'api_root'),
+    urlpatterns = format_suffix_patterns([
+        url(r'^$', api_root),
         url(r'^snippets/$', snippet_list, name='snippet-list'),
         url(r'^snippets/(?P<pk>[0-9]+)/$', snippet_detail, name='snippet-detail'),
         url(r'^snippets/(?P<pk>[0-9]+)/highlight/$', snippet_highlight, name='snippet-highlight'),
         url(r'^users/$', user_list, name='user-list'),
         url(r'^users/(?P<pk>[0-9]+)/$', user_detail, name='user-detail')
-    ))
+    ])
 
 ## Using Routers
 
@@ -102,7 +104,7 @@ Because we're using `ViewSet` classes rather than `View` classes, we actually do
 
 Here's our re-wired `urls.py` file.
 
-    from django.conf.urls import patterns, url, include
+    from django.conf.urls import url, include
     from snippets import views
     from rest_framework.routers import DefaultRouter
 
@@ -112,11 +114,11 @@ Here's our re-wired `urls.py` file.
     router.register(r'users', views.UserViewSet)
 
     # The API URLs are now determined automatically by the router.
-    # Additionally, we include the login URLs for the browseable API.
-    urlpatterns = patterns('',
+    # Additionally, we include the login URLs for the browsable API.
+    urlpatterns = [
         url(r'^', include(router.urls)),
         url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework'))
-    )
+    ]
 
 Registering the viewsets with the router is similar to providing a urlpattern.  We include two arguments - the URL prefix for the views, and the viewset itself.
 
@@ -130,7 +132,7 @@ That doesn't mean it's always the right approach to take.  There's a similar set
 
 ## Reviewing our work
 
-With an incredibly small amount of code, we've now got a complete pastebin Web API, which is fully web browseable, and comes complete with authentication, per-object permissions, and multiple renderer formats.
+With an incredibly small amount of code, we've now got a complete pastebin Web API, which is fully web browsable, and comes complete with authentication, per-object permissions, and multiple renderer formats.
 
 We've walked through each step of the design process, and seen how if we need to customize anything we can gradually work our way down to simply using regular Django views.
 
